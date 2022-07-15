@@ -1,49 +1,49 @@
 //
-//  QuickSwap.swift
+//  Uniswap.swift
 //  AlphaWallet
 //
 //  Created by Vladyslav Shepitko on 21.08.2020.
 //
 
-import Foundation
+import UIKit
 import Combine
 
-struct QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
+struct Uniswap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     var objectWillChange: AnyPublisher<Void, Never> {
         return Empty<Void, Never>(completeImmediately: true).eraseToAnyPublisher()
     }
 
     var action: String {
-        return R.string.localizable.aWalletTokenErc20ExchangeOnQuickSwapButtonTitle()
+        return R.string.localizable.aWalletTokenErc20ExchangeOnUniswapButtonTitle()
     }
-
-    func rpcServer(forToken token: TokenActionsIdentifiable) -> RPCServer? {
-        return .polygon
+    
+    func rpcServer(forToken token: TokenActionsServiceKey) -> RPCServer? {
+        return .main
     }
 
     var analyticsName: String {
-        "QuickSwap"
+        "Uniswap"
     }
 
-    private static let baseURL = "https://quickswap.exchange/#"
+    private static let baseURL = "https://app.uniswap.org/#"
 
     var version: Version = .v2
-    var theme: Uniswap.Theme = .dark
+    var theme: Theme = .dark
     var method: Method = .swap
 
-    func url(token: TokenActionsIdentifiable) -> URL? {
+    func url(token: TokenActionsServiceKey) -> URL? {
         let input = Input.input(token.contractAddress)
         var components = URLComponents()
         components.path = method.rawValue
         components.queryItems = [
             URLQueryItem(name: Version.key, value: version.rawValue),
-            URLQueryItem(name: Uniswap.Theme.key, value: theme.rawValue)
+            URLQueryItem(name: Theme.key, value: theme.rawValue)
         ] + input.urlQueryItems
 
         //NOTE: URLComponents doesn't allow path to contain # symbol
         guard let pathWithQueryItems = components.url?.absoluteString else { return nil }
 
-        return URL(string: QuickSwap.baseURL + pathWithQueryItems)
+        return URL(string: Uniswap.baseURL + pathWithQueryItems)
     }
 
     enum Version: String {
@@ -51,6 +51,13 @@ struct QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
 
         case v1
         case v2
+    }
+
+    enum Theme: String {
+        static let key = "theme"
+
+        case dark
+        case light
     }
 
     enum Method: String {
@@ -87,7 +94,7 @@ struct QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
         class functional {
             static func rewriteContractInput(_ address: AlphaWallet.Address) -> String {
                 if address.sameContract(as: Constants.nativeCryptoAddressInDatabase) {
-                    //QuickSwap (forked from Uniswap) likes it this way
+                    //Uniswap likes it this way
                     return "ETH"
                 } else {
                     return address.eip55String
@@ -96,22 +103,28 @@ struct QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
         }
     }
 
-    func actions(token: TokenActionsIdentifiable) -> [TokenInstanceAction] {
+    func actions(token: TokenActionsServiceKey) -> [TokenInstanceAction] {
         return [
             .init(type: .swap(service: self))
         ]
     }
 
-    func isSupport(token: TokenActionsIdentifiable) -> Bool {
-        switch token.server {
-        case .polygon:
-            return true
-        case .main, .kovan, .ropsten, .rinkeby, .poa, .sokol, .classic, .callisto, .goerli, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .custom, .fantom, .fantom_testnet, .candle, .avalanche, .avalanche_testnet, .xDai, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
-            return false
-        }
+    func isSupport(token: TokenActionsServiceKey) -> Bool {
+        return UniswapERC20Token.isSupport(token: token)
     }
 
     func start() {
         //no-op
+    }
+}
+
+extension UITraitCollection {
+    var uniswapTheme: Uniswap.Theme {
+        switch userInterfaceStyle {
+        case .dark:
+            return .dark
+        case .light, .unspecified:
+            return .light
+        }
     }
 }

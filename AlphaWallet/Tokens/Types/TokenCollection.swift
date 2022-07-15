@@ -76,3 +76,4 @@ class MultipleChainsTokenCollection: NSObject, TokenCollection {
         tokensDataStore.addCustom(tokens: tokens, shouldUpdateBalance: shouldUpdateBalance)
     }
 }
+

@@ -23,6 +23,7 @@ struct ConfigExplorer {
             .flatMap { (url: $0, name: result.name) }
     }
 
+
     private static func explorer(for server: RPCServer) -> (url: String?, name: String) {
         let url = server.etherscanWebpageRoot
         return (url?.absoluteString, server.explorerName)
