@@ -26,7 +26,6 @@ public extension StorageType {
 
             return defaultValue
         }
-
         return result
     }
 
@@ -143,11 +142,11 @@ public extension URL {
 }
 
 public extension FileStorage {
-    static func forTestSuite(folder: String = "testSuiteForAddressStorage") throws -> FileStorage {
+    static func forTestSuite(folder: String = "testSuiteForAddressStorage", fileExtension: String = "json") throws -> FileStorage {
         try removeAddressFolderForTests(name: folder)
 
         let url = try addressStorageUrlInCacheFolder(folder)
-        return FileStorage(fileExtension: "json", directoryUrl: url)
+        return FileStorage(fileExtension: fileExtension, directoryUrl: url)
     }
 
     private static func addressStorageUrlInCacheFolder(_ folder: String) throws -> URL {

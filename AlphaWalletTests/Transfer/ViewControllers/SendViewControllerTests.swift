@@ -73,12 +73,11 @@ class SendViewControllerTests: XCTestCase {
 
         let tokenBalanceUpdateCallbackExpectation = self.expectation(description: "did update token balance expectation")
         var callbackCount: Int = 0
-        let callbackCountExpectation: Int = 13
+        let callbackCountExpectation: Int = 12
 
         tokenBalanceService.tokenBalancePublisher(token.addressAndRPCServer)
             .sink { _ in
                 callbackCount += 1
-
                 if callbackCount == callbackCountExpectation {
                     tokenBalanceUpdateCallbackExpectation.fulfill()
                 }
@@ -128,7 +127,7 @@ class SendViewControllerTests: XCTestCase {
 
         tokenBalanceService.tokenBalancePublisher(token.addressAndRPCServer)
             .sink { value in
-                if callbackCount2 == 0 {
+                if callbackCount == 0 {
                     XCTAssertNotNil(value)
                 }
 

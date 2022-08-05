@@ -10,6 +10,8 @@ protocol BlockscanChatServiceDelegate: class {
 }
 
 class BlockscanChatService {
+    private static let refreshInterval: TimeInterval = 60
+
     private let account: Wallet
     private var blockscanChatsForRealWallets: [BlockscanChat]
     private let walletAddressesStore: WalletAddressesStore
@@ -37,7 +39,7 @@ class BlockscanChatService {
 
         watchForWalletChanges()
         NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground(_:)), name: UIApplication.willEnterForegroundNotification, object: nil)
-        periodicRefreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        periodicRefreshTimer = Timer.scheduledTimer(withTimeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
             self?.periodicallyRefreshUnreadCountForCurrentWallet()
         }
     }
@@ -114,7 +116,7 @@ class BlockscanChatService {
     }
 
     private func periodicallyRefreshUnreadCountForCurrentWallet() {
-        infoLog("[BlockscanChat] periodicallyRefreshUnreadCountForCurrentWallet")
+        infoLog("[BlockscanChat] periodicallyRefreshUnreadCountForCurrentWallet wallet: \(account.address.eip55String)")
         //TODO refresh for all wallets (maybe less often as the current wallet). Not doing it yet because we don't have a way to show the unread count for inactive wallets
         refreshUnreadCountForCurrentWallet()
     }

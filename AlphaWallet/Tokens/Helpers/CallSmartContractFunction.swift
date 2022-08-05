@@ -2,6 +2,7 @@
 
 import Foundation
 import PromiseKit
+import Result
 import web3swift
 
 //TODO time to wrap `callSmartContract` with a class
@@ -22,8 +23,11 @@ private let web3Queue: OperationQueue = {
 
 private func createWeb3(webProvider: Web3HttpProvider, forServer server: RPCServer) -> web3 {
     var requestDispatcher: JSONRPCrequestDispatcher
+    //TODO change to switch statement
     if server == .klaytnCypress || server == .klaytnBaobabTestnet {
         requestDispatcher = JSONRPCrequestDispatcher(provider: webProvider, queue: web3Queue.underlyingQueue!, policy: .NoBatching)
+    } else if server == .xDai {
+        requestDispatcher = JSONRPCrequestDispatcher(provider: webProvider, queue: web3Queue.underlyingQueue!, policy: .Batch(6))
     } else {
         requestDispatcher = JSONRPCrequestDispatcher(provider: webProvider, queue: web3Queue.underlyingQueue!, policy: .Batch(32))
     }
@@ -35,7 +39,8 @@ func getCachedWeb3(forServer server: RPCServer, timeout: TimeInterval) throws ->
     if let result = web3s[server]?[timeout] {
         return result
     } else {
-        guard let webProvider = Web3HttpProvider(server.rpcURL, network: server.web3Network) else {
+        let rpcHeaders = server.rpcHeaders
+        guard let webProvider = Web3HttpProvider(server.rpcURL, headers: rpcHeaders, network: server.web3Network) else {
             throw Web3Error(description: "Error creating web provider for: \(server.rpcURL) + \(server.web3Network)")
         }
         let configuration = webProvider.session.configuration
@@ -159,4 +164,8 @@ func getEventLogs(
             debugLog("[eth_getLogs] failure for server: \(server) with error: \(error)")
             return .init(error: error)
         }
+}
+
+func createSmartContractCallError(forContract contract: AlphaWallet.Address, functionName: String) -> AnyError {
+    AnyError(Web3Error(description: "Error extracting result from \(contract.eip55String).\(functionName)()"))
 }

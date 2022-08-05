@@ -4,6 +4,7 @@ import Foundation
 import web3swift
 import BigInt
 
+// swiftlint:disable file_length
 extension RPCServer {
     static func custom(chainId: Int) -> RPCServer {
         return .custom(.custom(chainId: chainId))
@@ -586,6 +587,9 @@ enum RPCServer: Hashable, CaseIterable {
             case .poa: return "https://core.poa.network"
             case .sokol: return "https://sokol.poa.network"
             case .goerli: return "https://goerli.infura.io/v3/\(Constants.Credentials.infuraKey)"
+            //https://rpc.ankr.com/gnosis handles batching and errors differently from other RPC nodes
+            // if there's an error, the `id` field is null (unlike others)
+            // if it's a batched request of N requests and there's an error, 1 error is returned instead of N array and the `id` field in the error is null (unlike others)
             case .xDai: return "https://rpc.ankr.com/gnosis"
             case .phi: return "https://rpc1.phi.network"
             case .artis_sigma1: return "https://rpc.sigma1.artis.network"
@@ -609,13 +613,42 @@ enum RPCServer: Hashable, CaseIterable {
             case .arbitrumRinkeby: return "https://arbitrum-rinkeby.infura.io/v3/\(Constants.Credentials.infuraKey)"
             case .palm: return "https://palm-mainnet.infura.io/v3/\(Constants.Credentials.infuraKey)"
             case .palmTestnet: return "https://palm-testnet.infura.io/v3/\(Constants.Credentials.infuraKey)"
-            case .klaytnCypress: return "https://public-node-api.klaytnapi.com/v1/cypress"
-            case .klaytnBaobabTestnet: return "https://api.baobab.klaytn.net:8651"
+            case .klaytnCypress:
+                let basicAuth = Constants.Credentials.klaytnRpcNodeKeyBasicAuth
+                if basicAuth.isEmpty {
+                    return "https://public-node-api.klaytnapi.com/v1/cypress"
+                } else {
+                    return "https://node-api.klaytnapi.com/v1/klaytn"
+                }
+            case .klaytnBaobabTestnet:
+                let basicAuth = Constants.Credentials.klaytnRpcNodeKeyBasicAuth
+                if basicAuth.isEmpty {
+                    return "https://api.baobab.klaytn.net:8651"
+                } else {
+                    return "https://node-api.klaytnapi.com/v1/klaytn"
+                }
             case .ioTeX: return "https://babel-api.mainnet.iotex.io"
             case .ioTeXTestnet: return "https://babel-api.testnet.iotex.io"
             }
         }()
         return URL(string: urlString)!
+    }
+
+    var rpcHeaders: RPCNodeHTTPHeaders {
+        switch self {
+        case .klaytnCypress, .klaytnBaobabTestnet:
+            let basicAuth = Constants.Credentials.klaytnRpcNodeKeyBasicAuth
+            if basicAuth.isEmpty {
+                return .init()
+            } else {
+                return [
+                    "Authorization": "Basic \(basicAuth)",
+                    "x-chain-id": "\(chainID)",
+                ]
+            }
+        case .main, .classic, .callisto, .kovan, .ropsten, .rinkeby, .poa, .sokol, .goerli, .xDai, .phi, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .custom, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .ioTeX, .ioTeXTestnet:
+            return .init()
+        }
     }
 
     var transactionInfoEndpoints: URL? {
@@ -859,7 +892,9 @@ enum RPCServer: Hashable, CaseIterable {
         case .cronosTestnet, .arbitrum, .arbitrumRinkeby:
             //These not allow range more than 100000
             return .blockNumber(fromBlockNumber + 99990)
-        case .main, .candle, .kovan, .ropsten, .rinkeby, .poa, .classic, .callisto, .xDai, .phi, .goerli, .artis_sigma1, .artis_tau1, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .optimisticKovan, .sokol, .custom, .palm, .palmTestnet:
+        case .xDai:
+            return .blockNumber(fromBlockNumber + 3000)
+        case .main, .kovan, .candle, .ropsten, .rinkeby, .poa, .classic, .callisto, .phi, .goerli, .artis_sigma1, .artis_tau1, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .optimisticKovan, .sokol, .custom, .palm, .palmTestnet:
             return .latest
         case .klaytnCypress, .klaytnBaobabTestnet, .ioTeX, .ioTeXTestnet:
             //These not allow range more than 10,000
@@ -899,14 +934,15 @@ enum RPCServer: Hashable, CaseIterable {
         switch self {
         case .main: return 1
         case .xDai: return 2
-        case .classic: return 3
-        case .poa: return 4
-        case .ropsten: return 5
-        case .kovan: return 6
-        case .rinkeby: return 7
-        case .sokol: return 8
-        case .callisto: return 9
-        case .goerli: return 10
+        case .candle return 3
+        case .classic: return 4
+        case .poa: return 5
+        case .ropsten: return 6
+        case .kovan: return 7
+        case .rinkeby: return 8
+        case .sokol: return 9
+        case .callisto: return 10
+        case .goerli: return 11
         case .artis_sigma1: return 246529
         case .artis_tau1: return 246785
         case .binance_smart_chain: return 12
@@ -939,12 +975,28 @@ enum RPCServer: Hashable, CaseIterable {
         switch self {
         case .main, .kovan, .ropsten, .rinkeby, .goerli:
             return "Etherscan"
-        case .classic, .poa, .custom, .callisto, .sokol, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
+        case .classic, .candle, .poa, .custom, .callisto, .sokol, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
             return "\(name) Explorer"
         case .xDai:
             return "Blockscout"
         case .artis_sigma1, .artis_tau1:
             return "ARTIS"
+        }
+    }
+
+    var coinGeckoPlatform: String? {
+        switch self {
+        case .main: return "ethereum"
+        case .classic: return "ethereum-classic"
+        case .xDai: return "xdai"
+        case .binance_smart_chain: return "binance-smart-chain"
+        case .avalanche: return "avalanche"
+        case .polygon: return "polygon-pos"
+        case .fantom: return "fantom"
+        case .arbitrum: return "arbitrum-one"
+        case .klaytnCypress, .klaytnBaobabTestnet: return "klay-token"
+        case .poa, .candle, .kovan, .sokol, .callisto, .goerli, .artis_sigma1, .artis_tau1, .binance_smart_chain_testnet, .ropsten, .rinkeby, .heco, .heco_testnet, .fantom_testnet, .avalanche_testnet, .mumbai_testnet, .custom, .optimistic, .optimisticKovan, .cronosTestnet, .palm, .palmTestnet, .arbitrumRinkeby, .phi, .ioTeX, .ioTeXTestnet:
+            return nil
         }
     }
 }
@@ -992,3 +1044,4 @@ extension RPCServer {
         return nil
     }
 }
+// swiftlint:enable file_length

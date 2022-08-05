@@ -12,7 +12,7 @@ import Combine
 
 protocol CoinTickerProvider: AnyObject {
     func coinTicker(_ addressAndRPCServer: AddressAndRPCServer) -> CoinTicker?
-    func fetchChartHistories(_ addressToRPCServerKey: AddressAndRPCServer, force: Bool, periods: [ChartHistoryPeriod]) -> Promise<[ChartHistory]>
+    func fetchChartHistories(for token: Token, force: Bool, periods: [ChartHistoryPeriod]) -> AnyPublisher<[ChartHistory], Never>
 }
 
 protocol TokenBalanceProviderTests {
@@ -40,7 +40,7 @@ class MultiWalletBalanceService: NSObject, WalletBalanceService {
     private let config: Config
     private let analyticsCoordinator: AnalyticsCoordinator
     let assetDefinitionStore: AssetDefinitionStore
-    var coinTickersFetcher: CoinTickersFetcherType
+    var coinTickersFetcher: CoinTickersFetcher
     private var balanceFetchers: AtomicDictionary<Wallet, WalletBalanceFetcherType> = .init()
     private lazy var walletsSummarySubject: CurrentValueSubject<WalletSummary, Never> = {
         let balances = balanceFetchers.values.map { $0.value.balance }
@@ -66,7 +66,7 @@ class MultiWalletBalanceService: NSObject, WalletBalanceService {
     }
     private let store: LocalStore
 
-    init(store: LocalStore, keystore: Keystore, config: Config, assetDefinitionStore: AssetDefinitionStore, analyticsCoordinator: AnalyticsCoordinator, coinTickersFetcher: CoinTickersFetcherType, walletAddressesStore: WalletAddressesStore) {
+    init(store: LocalStore, keystore: Keystore, config: Config, assetDefinitionStore: AssetDefinitionStore, analyticsCoordinator: AnalyticsCoordinator, coinTickersFetcher: CoinTickersFetcher, walletAddressesStore: WalletAddressesStore) {
         self.store = store
         self.keystore = keystore
         self.config = config
@@ -149,9 +149,8 @@ class MultiWalletBalanceService: NSObject, WalletBalanceService {
         }
     }
 
-    func fetchChartHistories(_ addressToRPCServerKey: AddressAndRPCServer, force: Bool, periods: [ChartHistoryPeriod]) -> Promise<[ChartHistory]> {
-        return coinTickersFetcher
-            .fetchChartHistories(addressToRPCServerKey: addressToRPCServerKey, force: force, periods: periods)
+    func fetchChartHistories(for token: Token, force: Bool, periods: [ChartHistoryPeriod]) -> AnyPublisher<[ChartHistory], Never> {
+        return coinTickersFetcher.fetchChartHistories(for: .init(token: token), force: force, periods: periods)
     }
 
     /// NOTE: internal for test purposes

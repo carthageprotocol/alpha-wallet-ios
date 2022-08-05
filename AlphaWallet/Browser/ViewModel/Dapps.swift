@@ -7,6 +7,7 @@ This comment is here with the wrong syntax (no leading //) to force a build erro
 // swiftlint:enable no_space_in_method_call
 enum OriginalDapps {
     static let masterList = [
+        Dapp(name: "COINWAR", description: "DopeWars Fork for Crypto", url: "https://coinwar.app", cat: "Games"),
         Dapp(name: "Rare Coin", description: "Free Crypto Faucet & Yeild Farming", url: "make.rare.claims", cat: "Tools"),
         Dapp(name: "Eporio", description: "The cheaper marketplace for NFT - Non Fungible Tokens", url: "https://epor.io", cat: "Marketplace"),
         Dapp(name: "TokenSets", description: "Enhance your portfolio with automated asset management strategies.", url: "https://www.tokensets.com/", cat: "Finance"),
@@ -87,6 +88,7 @@ enum OriginalDapps {
         Dapp(name: "MetaPath", description: "Assets can be routed across different blockchains", url: "https://dapp.path.finance?source=alpha", cat: "Exchange"),  
         Dapp(name: "SWFT", description: "One Stop Cross-Chain swap, supporting 300+ tokens on 30+ chains", url: "https://defi.swft.pro?sourceFlag=alpha", cat: "Exchange")
         Dapp(name: "PancakeSwap", description: " A next evolution DeFi exchange on BNB Smart Chain (BSC)", url: "https://pancakeswap.finance/info", cat: "Exchange")
+        Dapp(name: "mail³", description: "Decentralized mail system for web3 natives.", url: "https://app.mail3.me/", cat: "Social Media")
 ),
     ]
 

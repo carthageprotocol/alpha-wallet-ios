@@ -34,7 +34,7 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
         guard Features.default.isAvailable(.isActivityEnabled) else { return nil }
         return EventSourceCoordinatorForActivities(wallet: wallet, config: config, tokensDataStore: tokensDataStore, assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsActivityDataStore)
     }()
-    private let coinTickersFetcher: CoinTickersFetcherType
+    private let coinTickersFetcher: CoinTickersFetcher
 
     lazy var tokensDataStore: TokensDataStore & DetectedContractsProvideble = {
         return MultipleChainsTokensDataStore(store: localStore.getOrCreateStore(forWallet: wallet), servers: config.enabledServers)
@@ -122,7 +122,7 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
         let tokenGroupIdentifier: TokenGroupIdentifierProtocol = TokenGroupIdentifier.identifier(fromFileName: "tokens")!
         let tokensFilter = TokensFilter(assetDefinitionStore: assetDefinitionStore, tokenActionsService: tokenActionsService, coinTickersFetcher: coinTickersFetcher, tokenGroupIdentifier: tokenGroupIdentifier)
 
-        return MultipleChainsTokenCollection(tokensFilter: tokensFilter, tokensDataStore: tokensDataStore, config: config)
+        return MultipleChainsTokenCollection(tokensFilter: tokensFilter, tokensDataStore: tokensDataStore, config: config, coinTickersFetcher: coinTickersFetcher)
     }()
 
     var presentationNavigationController: UINavigationController {
@@ -169,7 +169,7 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
             universalLinkCoordinator: UniversalLinkService,
             accountsCoordinator: AccountsCoordinator,
             walletBalanceService: WalletBalanceService,
-            coinTickersFetcher: CoinTickersFetcherType,
+            coinTickersFetcher: CoinTickersFetcher,
             tokenActionsService: TokenActionsService,
             walletConnectCoordinator: WalletConnectCoordinator,
             sessionsSubject: CurrentValueSubject<ServerDictionary<WalletSession>, Never> = .init(.init()),
@@ -265,7 +265,9 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
     }
 
     private func donateWalletShortcut() {
-        WalletQrCodeDonation(address: wallet.address).donate()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            WalletQrCodeDonation(address: self.wallet.address).donate()
+        }
     }
 
     func didFinishBackup(account: AlphaWallet.Address) {
@@ -460,8 +462,9 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
     }
 
     func showPaymentFlow(for type: PaymentFlow, server: RPCServer, navigationController: UINavigationController) {
-        switch (type, sessionsSubject.value[server].account.type) {
-        case (.send, .real), (.swap, .real), (.request, _):
+        switch (type, wallet.type) {
+        case (.send, .real), (.swap, .real), (.request, _),
+            (_, _) where Config().development.shouldPretendIsRealWallet:
             let coordinator = PaymentCoordinator(
                     navigationController: navigationController,
                     flow: type,
@@ -496,9 +499,8 @@ class ActiveWalletCoordinator: NSObject, Coordinator, DappRequestHandlerDelegate
     }
 
     private func fetchXMLAssetDefinitions() {
-        let coordinator = FetchAssetDefinitionsCoordinator(assetDefinitionStore: assetDefinitionStore, tokensDataStore: tokensDataStore, config: config)
-        coordinator.start()
-        addCoordinator(coordinator)
+        let fetch = FetchTokenScriptFiles(assetDefinitionStore: assetDefinitionStore, tokensDataStore: tokensDataStore, config: config)
+        fetch.start()
     }
 
     func importPaidSignedOrder(signedOrder: SignedOrder, token: Token, inViewController viewController: ImportMagicTokenViewController, completion: @escaping (Bool) -> Void) {
@@ -1112,9 +1114,9 @@ extension ActiveWalletCoordinator: TransactionsServiceDelegate {
         walletBalanceService.refreshBalance(updatePolicy: .all, wallets: [wallet])
     }
 
-    func didExtractNewContracts(in service: TransactionsService, contracts: [AlphaWallet.Address]) {
-        for each in contracts {
-            assetDefinitionStore.fetchXML(forContract: each)
+    func didExtractNewContracts(in service: TransactionsService, contractsAndServers: [AddressAndRPCServer]) {
+        for each in contractsAndServers {
+            assetDefinitionStore.fetchXML(forContract: each.address, server: each.server)
         }
     }
 }

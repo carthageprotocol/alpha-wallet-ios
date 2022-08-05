@@ -73,7 +73,7 @@ class TokensCoordinator: Coordinator {
     var coordinators: [Coordinator] = []
     weak var delegate: TokensCoordinatorDelegate?
 
-    private let coinTickersFetcher: CoinTickersFetcherType
+    private let coinTickersFetcher: CoinTickersFetcher
     lazy var rootViewController: TokensViewController = {
         return tokensViewController
     }()
@@ -85,7 +85,6 @@ class TokensCoordinator: Coordinator {
     private var tokensDataStore: TokensDataStore & DetectedContractsProvideble {
         return tokenCollection.tokensDataStore
     }
-    private let tokensAutoDetectionQueue: DispatchQueue = DispatchQueue(label: "com.TokensAutoDetection.updateQueue")
     private var viewWillAppearHandled = false
     private var cancelable = Set<AnyCancellable>()
     private let blockiesGenerator: BlockiesGenerator
@@ -105,7 +104,7 @@ class TokensCoordinator: Coordinator {
             openSea: OpenSea,
             tokenActionsService: TokenActionsService,
             walletConnectCoordinator: WalletConnectCoordinator,
-            coinTickersFetcher: CoinTickersFetcherType,
+            coinTickersFetcher: CoinTickersFetcher,
             activitiesService: ActivitiesServiceType,
             walletBalanceService: WalletBalanceService,
             tokenCollection: TokenCollection,
@@ -183,7 +182,7 @@ class TokensCoordinator: Coordinator {
     private func setupSingleChainTokenCoordinators() {
         for session in sessions.values {
             let tokensAutodetector: TokensAutodetector = {
-                SingleChainTokensAutodetector(session: session, detectedTokens: tokensDataStore, withAutoDetectTransactedTokensQueue: autoDetectTransactedTokensQueue, withAutoDetectTokensQueue: autoDetectTokensQueue, queue: tokensAutoDetectionQueue, importToken: importToken)
+                SingleChainTokensAutodetector(session: session, detectedTokens: tokensDataStore, withAutoDetectTransactedTokensQueue: autoDetectTransactedTokensQueue, withAutoDetectTokensQueue: autoDetectTokensQueue, queue: Config.backgroundQueue, importToken: importToken)
             }()
 
             let coordinator = SingleChainTokenCoordinator(session: session, keystore: keystore, tokensStorage: tokensDataStore, assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, analyticsCoordinator: analyticsCoordinator, openSea: openSea, tokenActionsProvider: tokenActionsService, coinTickersFetcher: coinTickersFetcher, activitiesService: activitiesService, alertService: alertService, tokensAutodetector: tokensAutodetector)
